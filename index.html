@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js Explorer</title>
+    <!-- Use Inter font from Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS CDN for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- ThreeCSG for boolean operations -->
+    <script src="https://cdn.jsdelivr.net/npm/three-csg@1.0.0/index.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar for better aesthetics */
+        .content-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .content-container::-webkit-scrollbar-thumb {
+            background-color: #6366f1; /* Indigo-500 */
+            border-radius: 4px;
+        }
+        .content-container::-webkit-scrollbar-track {
+            background-color: #1f2937; /* Gray-800 */
+        }
+        .animate-pulse-slow {
+            animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse-slow {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen p-4">
+
+    <!-- Initial Loading/Start Screen -->
+    <div id="start-screen" class="flex flex-col items-center justify-center text-center">
+        <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-8 tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-500 to-pink-500 drop-shadow-xl">
+            Explore the Three.js Universe
+        </h1>
+        <p class="text-lg md:text-xl text-gray-300 max-w-2xl mb-12">
+            A powerful JavaScript library for 3D graphics on the web. Click below to start your journey and see it in action.
+        </p>
+        <button id="start-button" class="px-8 py-4 text-lg font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 rounded-full shadow-lg hover:from-purple-700 hover:to-indigo-700 focus:outline-none focus:ring-4 focus:ring-purple-500 focus:ring-opacity-50 transition-transform transform hover:scale-105 animate-pulse-slow">
+            Start Learning
+        </button>
+    </div>
+
+    <!-- Three.js Animation Canvas -->
+    <div id="animation-container" class="hidden absolute inset-0">
+        <canvas id="three-canvas" class="w-full h-full block"></canvas>
+    </div>
+
+    <!-- Content Display Screen -->
+    <div id="content-screen" class="hidden w-full h-full max-w-7xl mx-auto p-4 md:p-8 overflow-y-auto content-container">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8">
+            <h2 class="text-3xl sm:text-4xl font-bold text-white mb-4 sm:mb-0">Resources & Repositories</h2>
+            <button id="back-button" class="flex items-center space-x-2 px-4 py-2 bg-gray-800 text-gray-300 rounded-full hover:bg-gray-700 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+                </svg>
+                <span>Back</span>
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <!-- Content Cards will be dynamically inserted here -->
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const startScreen = document.getElementById('start-screen');
+            const startButton = document.getElementById('start-button');
+            const animationContainer = document.getElementById('animation-container');
+            const contentScreen = document.getElementById('content-screen');
+            const backButton = document.getElementById('back-button');
+            const contentGrid = contentScreen.querySelector('.grid');
+
+            // --- Hardcoded content from the provided document ---
+            const repositoryData = [
+                {
+                    title: 'The Core Library & Foundational Hub',
+                    repos: [
+                        { name: 'mrdoob/three.js', description: 'The official and main repository for the Three.js library. The source of the core code, examples, and documentation.' },
+                        { name: 'pmndrs/drei', description: 'A collection of useful helpers, abstractions, and components specifically for react-three-fiber.' }
+                    ]
+                },
+                {
+                    title: 'Framework Integrations',
+                    repos: [
+                        { name: 'pmndrs/react-three-fiber', description: 'A React renderer for Three.js, allowing 3D scenes to be built with a declarative, component-based approach.' },
+                        { name: 'Tresjs/tres', description: 'A native, component-based approach to building 3D scenes for the Vue framework.' },
+                        { name: 'threlte/threlte', description: 'A 3D framework for Svelte, offering a declarative, type-safe, and reactive API.' },
+                        { name: 'Google/model-viewer', description: 'A web component for easily displaying 3D models with a simple HTML tag.' }
+                    ]
+                },
+                {
+                    title: 'Specialized Libraries & Tooling',
+                    repos: [
+                        { name: 'vasturiano/3d-force-graph', description: 'A powerful web component for rendering force-directed graph data structures in 3D.' },
+                        { name: 'tengbao/vanta', description: 'A library for creating animated 3D backgrounds for websites.' },
+                        { name: 'pmndrs/postprocessing', description: 'A widely used and highly performant tool for handling shaders and post-processing effects.' },
+                        { name: 'erichlof/THREE.js-PathTracing-Renderer', description: 'A real-time path-tracing renderer built on top of the Three.js WebGL framework.' }
+                    ]
+                },
+                {
+                    title: 'Tutorials & Community Resources',
+                    repos: [
+                        { name: 'threejs.org/examples', description: 'The official Three.js website hosts a large number of examples that showcase a wide range of capabilities.' },
+                        { name: 'AxiomeCG/awesome-threejs', description: 'A curated list of "awesome" Three.js resources, including libraries, tools, and articles.' },
+                        { name: 'SuboptimalEng/three-js-tutorials', description: 'Contains the code for a popular YouTube tutorial series, making it a valuable resource for learners.' },
+                        { name: 'ehsankkk1/Rockety', description: 'A project that simulates a rocket\'s flight, demonstrating the integration of a physics engine for realistic motion.' }
+                    ]
+                }
+            ];
+
+            // --- Three.js Animation Logic ---
+            let camera, scene, renderer;
+            let cube, sphere;
+            let animationFrameId;
+
+            function initAnimation() {
+                try {
+                    const canvas = document.getElementById('three-canvas');
+                    const width = window.innerWidth;
+                    const height = window.innerHeight;
+
+                    // Scene, camera, and renderer setup
+                    scene = new THREE.Scene();
+                    camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+                    renderer = new THREE.WebGLRenderer({
+                        canvas: canvas,
+                        antialias: true,
+                        alpha: true
+                    });
+                    renderer.setSize(width, height);
+                    renderer.setPixelRatio(window.devicePixelRatio);
+
+                    // Add lights
+                    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+                    scene.add(ambientLight);
+                    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+                    directionalLight.position.set(0, 1, 1).normalize();
+                    scene.add(directionalLight);
+
+                    // Create the initial shapes
+                    const cubeGeometry = new THREE.BoxGeometry(2, 2, 2);
+                    const sphereGeometry = new THREE.SphereGeometry(1.5, 32, 32);
+                    const material = new THREE.MeshPhongMaterial({
+                        color: 0x6366f1, // Tailwind indigo-500
+                        shininess: 150,
+                    });
+
+                    cube = new THREE.Mesh(cubeGeometry, material);
+                    sphere = new THREE.Mesh(sphereGeometry, material);
+
+                    cube.position.set(-2, 0, 0);
+                    sphere.position.set(2, 0, 0);
+
+                    scene.add(cube);
+                    scene.add(sphere);
+
+                    camera.position.z = 5;
+
+                    animate();
+                } catch (error) {
+                    console.error('Error during Three.js initialization:', error);
+                }
+            }
+
+            function animate() {
+                animationFrameId = requestAnimationFrame(animate);
+                renderer.render(scene, camera);
+
+                // Simple animation to reveal the content
+                cube.rotation.x += 0.01;
+                cube.rotation.y += 0.01;
+                sphere.rotation.x += 0.01;
+                sphere.rotation.y -= 0.01;
+                
+                // Animate the camera
+                camera.position.x = Math.sin(Date.now() * 0.0005) * 1.5;
+                camera.position.y = Math.cos(Date.now() * 0.0005) * 1.5;
+                camera.lookAt(new THREE.Vector3(0, 0, 0));
+            }
+
+            // --- Main application logic ---
+            let animationTimer;
+
+            startButton.addEventListener('click', () => {
+                startScreen.classList.add('hidden');
+                animationContainer.classList.remove('hidden');
+
+                initAnimation();
+                
+                // After 4 seconds, show the content
+                animationTimer = setTimeout(() => {
+                    cancelAnimationFrame(animationFrameId);
+                    animationContainer.classList.add('hidden');
+                    startScreen.classList.add('hidden');
+                    contentScreen.classList.remove('hidden');
+                    
+                    // Create and append the content cards
+                    populateContent();
+                }, 4000);
+            });
+
+            backButton.addEventListener('click', () => {
+                contentScreen.classList.add('hidden');
+                startScreen.classList.remove('hidden');
+            });
+            
+            function populateContent() {
+                contentGrid.innerHTML = ''; // Clear existing content
+                repositoryData.forEach(category => {
+                    const card = document.createElement('div');
+                    card.className = "p-6 bg-gray-800 rounded-2xl shadow-xl transition-all duration-300 hover:bg-gray-700 hover:shadow-2xl";
+                    
+                    const title = document.createElement('h3');
+                    title.className = "text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-cyan-500 mb-4";
+                    title.textContent = category.title;
+                    
+                    card.appendChild(title);
+                    
+                    category.repos.forEach(repo => {
+                        const repoLink = document.createElement('a');
+                        repoLink.href = `https://github.com/${repo.name}`;
+                        repoLink.target = "_blank";
+                        repoLink.rel = "noopener noreferrer";
+                        repoLink.className = "block p-4 mb-2 bg-gray-700 rounded-lg transition-colors duration-200 hover:bg-gray-600";
+                        
+                        const repoName = document.createElement('p');
+                        repoName.className = "font-semibold text-sm sm:text-base text-white";
+                        repoName.textContent = repo.name;
+                        
+                        const repoDesc = document.createElement('p');
+                        repoDesc.className = "text-xs sm:text-sm text-gray-400 mt-1";
+                        repoDesc.textContent = repo.description;
+                        
+                        repoLink.appendChild(repoName);
+                        repoLink.appendChild(repoDesc);
+                        
+                        card.appendChild(repoLink);
+                    });
+                    
+                    contentGrid.appendChild(card);
+                });
+            }
+
+            // Handle window resizing
+            window.addEventListener('resize', () => {
+                const width = window.innerWidth;
+                const height = window.innerHeight;
+                if (camera && renderer) {
+                    camera.aspect = width / height;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(width, height);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
